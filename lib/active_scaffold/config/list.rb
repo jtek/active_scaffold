@@ -8,10 +8,11 @@ module ActiveScaffold::Config
       # inherit from global scope
       # full configuration path is: defaults => global table => local table
       @per_page = self.class.per_page
+      @page_links_window = self.class.page_links_window
       
       # originates here
       @sorting = ActiveScaffold::DataStructures::Sorting.new(@core.columns)
-      @sorting.add @core.model.primary_key, 'ASC'
+      @sorting.set_default_sorting(@core.model)
 
       # inherit from global scope
       @empty_field_text = self.class.empty_field_text
@@ -22,6 +23,10 @@ module ActiveScaffold::Config
     # how many records to show per page
     cattr_accessor :per_page
     @@per_page = 15
+
+    # how many page links around current page to show
+    cattr_accessor :page_links_window
+    @@page_links_window = 2
 
     # what string to use when a field is empty
     cattr_accessor :empty_field_text
@@ -35,13 +40,14 @@ module ActiveScaffold::Config
       self.columns = @core.columns._inheritable unless @columns # lazy evaluation
       @columns
     end
-    def columns=(val)
-      @columns = ActiveScaffold::DataStructures::ActionColumns.new(*val)
-      @columns.action = self
-    end
+    
+    public :columns=
 
     # how many rows to show at once
     attr_accessor :per_page
+
+    # how many page links around current page to show
+    attr_accessor :page_links_window
 
     # what string to use when a field is empty
     attr_accessor :empty_field_text
@@ -62,7 +68,7 @@ module ActiveScaffold::Config
     # the label for this List action. used for the header.
     attr_writer :label
     def label
-      @label ? as_(@label) : @core.label
+      @label ? as_(@label, :count => 2) : @core.label(:count => 2)
     end
 
     attr_writer :no_entries_message
