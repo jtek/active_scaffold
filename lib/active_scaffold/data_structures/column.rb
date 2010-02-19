@@ -27,7 +27,7 @@ module ActiveScaffold::DataStructures
     # if left alone it will utilize human_attribute_name which includes localization
     attr_writer :label
     def label
-      as_(@label) || as_(active_record_class.human_attribute_name(name.to_s))
+      as_(@label) || active_record_class.human_attribute_name(name.to_s)
     end
 
     # a textual description of the column and its contents. this will be displayed with any associated form input widget, so you may want to consider adding a content example.
