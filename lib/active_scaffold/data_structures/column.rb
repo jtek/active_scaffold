@@ -187,7 +187,7 @@ module ActiveScaffold::DataStructures
       if @show_blank_record
         return false if self.through_association?
         return false unless self.association.klass.authorized_for?(:action => :create)
-        self.plural_association? or (self.singular_association? and associated.empty?)
+        self.plural_association? or (self.singular_association? and associated.blank?)
       end
     end
 
@@ -255,17 +255,7 @@ module ActiveScaffold::DataStructures
 
       # default all the configurable variables
       self.css_class = ''
-      if active_record_class.respond_to? :reflect_on_validations_for
-        column_names = [name]
-        column_names << @association.primary_key_name if @association
-        self.required = column_names.any? do |column_name|
-          active_record_class.reflect_on_validations_for(column_name.to_sym).any? do |val|
-            val.macro == :validates_presence_of or (val.macro == :validates_inclusion_of and not val.options[:allow_nil] and not val.options[:allow_blank])
-          end
-        end
-      else
-        self.required = false
-      end
+      self.required = false
       self.sort = true
       self.search_sql = true
 
