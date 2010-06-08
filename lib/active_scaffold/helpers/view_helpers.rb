@@ -193,6 +193,10 @@ module ActiveScaffold
         calculation = active_scaffold_config.model.calculate(column.calculate, column.name, :conditions => controller.send(:all_conditions),
          :joins => controller.send(:joins_for_collection), :include => controller.send(:active_scaffold_includes))
       end
+
+      def controller_class
+        "#{h params[:controller]}-view"
+      end
     end
   end
 end
