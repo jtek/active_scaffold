@@ -167,7 +167,7 @@ module ActiveScaffold
         html_options[:class] += " #{link.html_options[:class]}" unless link.html_options[:class].blank?
 
         # issue 260, use url_options[:link] if it exists. This prevents DB data from being localized.
-        label = url_options.delete(:link) || as_(link.label)
+        label = url_options.delete(:link) || link.label
         link_to label, url_options, html_options
       end
 
