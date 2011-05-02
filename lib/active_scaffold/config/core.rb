@@ -1,6 +1,5 @@
-require 'active_scaffold/config/base'
 module ActiveScaffold::Config
-  class Core < Base
+  class Core < ActiveScaffold::Config::Base
     # global level configuration
     # --------------------------
 
@@ -92,7 +91,7 @@ module ActiveScaffold::Config
     # a generally-applicable name for this ActiveScaffold ... will be used for generating page/section headers
     attr_writer :label
     def label(options={})
-      as_(@label, options) || as_(model.human_name(options.merge(options[:count].to_i == 1 ? {} : {:default => model.name.pluralize})))
+      as_(@label, options) || model.human_name(options.merge(:default => options[:count].to_i == 1 ? model.name : model.name.pluralize))
     end
 
     # STI children models, use an array of model names

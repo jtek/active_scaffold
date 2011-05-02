@@ -39,17 +39,13 @@ module ActiveScaffold::Actions
     def create_respond_to_html
       if params[:iframe]=='true' # was this an iframe post ?
         responds_to_parent do
-          if successful?
-            render :action => 'on_create.js'
-          else
-            render :action => 'form_messages_on_save.js'
-          end
+          render :action => 'on_create.js'
         end
       else
         if successful?
           flash[:info] = as_(:created_model, :model => @record.to_label)
-          if active_scaffold_config.create.edit_after_create
-            redirect_to params_for(:action => "edit", :id => @record.id)
+          if action = active_scaffold_config.create.action_after_create
+            redirect_to params_for(:action => action, :id => @record.id)
           elsif active_scaffold_config.create.persistent
             redirect_to params_for(:action => "new")
           else
@@ -139,7 +135,7 @@ module ActiveScaffold::Actions
     # The default security delegates to ActiveRecordPermissions.
     # You may override the method to customize.
     def create_authorized?
-      authorized_for?(:action => :create)
+      authorized_for?(:crud_type => :create)
     end
     private
     def create_authorized_filter

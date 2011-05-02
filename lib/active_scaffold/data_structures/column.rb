@@ -16,6 +16,9 @@ module ActiveScaffold::DataStructures
 
     # Whether this column set is collapsed by default in contexts where collapsing is supported
     attr_accessor :collapsed
+
+    # Whether to enable add_existing for this column
+    attr_accessor :allow_add_existing
     
     # Any extra parameters this particular column uses.  This is for create/update purposes.
     def params
@@ -49,6 +52,13 @@ module ActiveScaffold::DataStructures
     def required?
       @required
     end
+
+    # column to be updated in a form when this column changes
+    attr_accessor :update_column
+
+    # send all the form instead of only new value when this column change
+    cattr_accessor :send_form_on_update_column
+    attr_accessor :send_form_on_update_column
 
     # sorting on a column can be configured four ways:
     #   sort = true               default, uses intelligent sorting sql default
@@ -93,14 +103,7 @@ module ActiveScaffold::DataStructures
 
     attr_writer :search_ui
     def search_ui
-      @search_ui || @form_ui
-    end
-
-    # DEPRECATED
-    alias :ui_type :form_ui
-    def ui_type=(val)
-      ::ActiveSupport::Deprecation.warn("config.columns[:#{name}].ui_type will disappear in version 2.0. Please use config.columns[:#{name}].form_ui instead.", caller)
-      self.form_ui = val
+      @search_ui || @form_ui || (@association && !polymorphic_association? ? :select : nil)
     end
 
     # a place to store dev's column specific options
@@ -185,9 +188,8 @@ module ActiveScaffold::DataStructures
     attr_writer :show_blank_record
     def show_blank_record?(associated)
       if @show_blank_record
-        return false if self.through_association?
-        return false unless self.association.klass.authorized_for?(:action => :create)
-        self.plural_association? or (self.singular_association? and associated.empty?)
+        return false unless self.association.klass.authorized_for?(:crud_type => :create)
+        self.plural_association? or (self.singular_association? and associated.blank?)
       end
     end
 
@@ -249,23 +251,15 @@ module ActiveScaffold::DataStructures
       @associated_limit = self.class.associated_limit
       @associated_number = self.class.associated_number
       @show_blank_record = self.class.show_blank_record
+      @send_form_on_update_column = self.class.send_form_on_update_column
       @actions_for_association_links = self.class.actions_for_association_links.clone if @association
-      @search_ui = :select if @association and not polymorphic_association?
       @options = {:format => :i18n_number} if @column.try(:number?)
+      @form_ui = :checkbox if @column and @column.type == :boolean and !@column.null
+      @allow_add_existing = true
 
       # default all the configurable variables
       self.css_class = ''
-      if active_record_class.respond_to? :reflect_on_validations_for
-        column_names = [name]
-        column_names << @association.primary_key_name if @association
-        self.required = column_names.any? do |column_name|
-          active_record_class.reflect_on_validations_for(column_name.to_sym).any? do |val|
-            val.macro == :validates_presence_of or (val.macro == :validates_inclusion_of and not val.options[:allow_nil] and not val.options[:allow_blank])
-          end
-        end
-      else
-        self.required = false
-      end
+      self.required = false
       self.sort = true
       self.search_sql = true
 
@@ -281,6 +275,26 @@ module ActiveScaffold::DataStructures
     def <=>(other_column)
       order_weight = self.weight <=> other_column.weight
       order_weight != 0 ? order_weight : self.name.to_s <=> other_column.name.to_s
+    end
+
+    def number_to_native(value)
+      return value if value.blank? || !value.is_a?(String)
+      native = '.' # native ruby separator
+      format = {:separator => '', :delimiter => ''}.merge! I18n.t('number.format', :default => {})
+      specific = case self.options[:format]
+      when :currency
+        I18n.t('number.currency.format', :default => nil)
+      when :size
+        I18n.t('number.human.format', :default => nil)
+      when :percentage
+        I18n.t('number.percentage.format', :default => nil)
+      end
+      format.merge! specific unless specific.nil?
+      unless format[:separator].blank? || !value.include?(format[:separator]) && value.include?(native) && (format[:delimiter] != native || value !~ /\.\d{3}$/)
+        value.gsub(/[^0-9\-#{format[:separator]}]/, '').gsub(format[:separator], native)
+      else
+        value
+      end
     end
 
     protected
@@ -317,7 +331,7 @@ module ActiveScaffold::DataStructures
 
     # the table.field name for this column, if applicable
     def field
-      @field ||= [@active_record_class.connection.quote_column_name(@table), field_name].join('.')
+      @field ||= [@active_record_class.connection.quote_table_name(@table), field_name].join('.')
     end
   end
 end
